@@ -1,0 +1,21 @@
+﻿# Virtual environments
+venv/
+.venv/
+env/
+
+# Python cache & build files
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# Secrets and API keys
+.env
+*.pem
+*.key
+
+# Local AI models / large data files
+*.gguf
+*.safetensors
+*.pt
+*.pth
+*.bin

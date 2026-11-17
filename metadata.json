@@ -1,0 +1,6 @@
+{
+  "name": "House Price Predictor",
+  "description": "Simple modular-monolith House Price Prediction web application with FastAPI backend, Vanilla JS frontend, and ML prediction service interface.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

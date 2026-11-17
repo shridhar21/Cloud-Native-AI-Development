@@ -1,0 +1,127 @@
+{
+  "cities": [
+    {
+      "id": "city-a",
+      "name": "City A"
+    }
+  ],
+  "localities": [
+    {
+      "id": "local-1",
+      "name": "Local 1",
+      "city_id": "city-a"
+    }
+  ],
+  "properties": [
+    {
+      "id": "A1",
+      "city_id": "city-a",
+      "locality_id": "local-1",
+      "features": {
+        "area_sqft": 850,
+        "bedrooms": 2,
+        "bathrooms": 1,
+        "age_years": 12
+      }
+    },
+    {
+      "id": "A2",
+      "city_id": "city-a",
+      "locality_id": "local-1",
+      "features": {
+        "area_sqft": 1100,
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "age_years": 8
+      }
+    },
+    {
+      "id": "A3",
+      "city_id": "city-a",
+      "locality_id": "local-1",
+      "features": {
+        "area_sqft": 1350,
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "age_years": 5
+      }
+    },
+    {
+      "id": "A4",
+      "city_id": "city-a",
+      "locality_id": "local-1",
+      "features": {
+        "area_sqft": 1600,
+        "bedrooms": 3,
+        "bathrooms": 3,
+        "age_years": 3
+      }
+    },
+    {
+      "id": "A5",
+      "city_id": "city-a",
+      "locality_id": "local-1",
+      "features": {
+        "area_sqft": 950,
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "age_years": 15
+      }
+    },
+    {
+      "id": "A6",
+      "city_id": "city-a",
+      "locality_id": "local-1",
+      "features": {
+        "area_sqft": 1850,
+        "bedrooms": 4,
+        "bathrooms": 3,
+        "age_years": 2
+      }
+    },
+    {
+      "id": "A7",
+      "city_id": "city-a",
+      "locality_id": "local-1",
+      "features": {
+        "area_sqft": 2200,
+        "bedrooms": 4,
+        "bathrooms": 4,
+        "age_years": 0
+      }
+    },
+    {
+      "id": "A8",
+      "city_id": "city-a",
+      "locality_id": "local-1",
+      "features": {
+        "area_sqft": 720,
+        "bedrooms": 1,
+        "bathrooms": 1,
+        "age_years": 18
+      }
+    },
+    {
+      "id": "A9",
+      "city_id": "city-a",
+      "locality_id": "local-1",
+      "features": {
+        "area_sqft": 1480,
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "age_years": 7
+      }
+    },
+    {
+      "id": "A10",
+      "city_id": "city-a",
+      "locality_id": "local-1",
+      "features": {
+        "area_sqft": 2500,
+        "bedrooms": 4,
+        "bathrooms": 4,
+        "age_years": 4
+      }
+    }
+  ]
+}

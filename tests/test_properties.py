@@ -4,8 +4,8 @@ from pathlib import Path
 import pytest
 
 from app.config import DEFAULT_DATA_FILE
-from app.schemas import PropertyFeatures
-from app.services.prediction_service import PredictionService, predict_price
+from app.schemas import PredictionRequest
+from app.services.prediction_service import PredictionService
 from app.services.property_service import (
     InvalidPropertyIdError,
     PropertyDataError,
@@ -69,10 +69,10 @@ def test_missing_data_file_raises_meaningful_startup_error(tmp_path: Path) -> No
 
 def test_prediction_service_returns_model_not_configured_by_default() -> None:
     service = PredictionService()
-    features = PropertyFeatures(area_sqft=1200, bedrooms=2, bathrooms=2, age_years=0)
-    result = predict_price(features=features, property_id="A1", service=service)
+    request = PredictionRequest(location="Whitefield", area_sqft=1200, bedrooms=2, bathrooms=2)
+    result = service.predict_price(request)
     assert result.status.value == "MODEL_NOT_CONFIGURED"
     assert result.predicted_price_inr is None
     assert result.model_version is None
-    assert result.property_id == "A1"
+    assert result.location == "Whitefield"
     assert result.timestamp.endswith("Z")

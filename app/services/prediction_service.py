@@ -1,21 +1,32 @@
-"""Prediction service interface and Version 1 unconfigured placeholder."""
+"""Load and run the Bengaluru house-price regression pipeline."""
 
+from collections.abc import Sequence
 from datetime import datetime, timezone
+import math
+from pathlib import Path
 from typing import Protocol
+import warnings
+
+import joblib
+import pandas as pd
+from sklearn.exceptions import InconsistentVersionWarning
+from sklearn.utils.validation import check_is_fitted
 
 from app.schemas import (
     PredictionRequest,
     PredictionResponse,
     PredictionStatus,
-    PropertyFeatures,
 )
+
+MODEL_FEATURES = ("location", "total_sqft", "bhk", "bath")
+RUPEES_PER_LAKH = 100_000
 
 
 class RegressionModelProtocol(Protocol):
-    """Protocol for future scikit-learn Multiple Linear Regression models loaded via joblib."""
+    """Interface of the fitted regression pipeline."""
 
-    def predict(self, X: list[list[float]]) -> list[float]:
-        """Return predicted prices in INR for the provided 4-feature vectors."""
+    def predict(self, X: pd.DataFrame) -> Sequence[float]:
+        """Return predicted prices in lakhs of rupees."""
 
 
 def utc_timestamp_iso() -> str:
@@ -34,6 +45,26 @@ class PredictionService:
         self._model = model
         self._model_version = model_version
 
+    @classmethod
+    def from_artifact(cls, path: str | None, version: str | None = None) -> "PredictionService":
+        """Load a deployment-provided artifact once when the app starts."""
+        if path is None:
+            return cls()
+
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", InconsistentVersionWarning)
+                model = joblib.load(Path(path))
+            check_is_fitted(model)
+            if not callable(getattr(model, "predict", None)) or tuple(
+                getattr(model, "feature_names_in_", ())
+            ) != MODEL_FEATURES:
+                raise ValueError(f"Expected a fitted predictor with columns {MODEL_FEATURES}.")
+        except Exception as exc:
+            raise RuntimeError(f"Could not load prediction model from MODEL_PATH '{path}': {exc}") from exc
+
+        return cls(model=model, model_version=version)
+
     @property
     def is_model_configured(self) -> bool:
         """Whether a trained regression model is currently loaded in memory."""
@@ -51,7 +82,7 @@ class PredictionService:
         if self._model is None:
             return PredictionResponse(
                 status=PredictionStatus.MODEL_NOT_CONFIGURED,
-                property_id=request.property_id,
+                location=request.location,
                 predicted_price_inr=None,
                 currency="INR",
                 model_version=None,
@@ -62,45 +93,20 @@ class PredictionService:
                 ),
             )
 
-        features = PropertyFeatures(
-            area_sqft=request.area_sqft,
-            bedrooms=request.bedrooms,
-            bathrooms=request.bathrooms,
-            age_years=request.age_years,
+        features = pd.DataFrame(
+            [(request.location, request.area_sqft, request.bedrooms, request.bathrooms)],
+            columns=MODEL_FEATURES,
         )
-        feature_vector = [
-            [
-                float(features.area_sqft),
-                float(features.bedrooms),
-                float(features.bathrooms),
-                float(features.age_years),
-            ]
-        ]
-        prediction = float(self._model.predict(feature_vector)[0])
+        price_inr = float(self._model.predict(features)[0]) * RUPEES_PER_LAKH
+        if not math.isfinite(price_inr):
+            raise RuntimeError("Prediction model returned a non-finite price.")
 
         return PredictionResponse(
             status=PredictionStatus.SUCCESS,
-            property_id=request.property_id,
-            predicted_price_inr=round(prediction, 2),
+            location=request.location,
+            predicted_price_inr=round(price_inr, 2),
             currency="INR",
             model_version=self._model_version,
             timestamp=timestamp,
             message="House price prediction generated successfully.",
         )
-
-
-def predict_price(
-    features: PropertyFeatures,
-    property_id: str,
-    service: PredictionService | None = None,
-) -> PredictionResponse:
-    """Convenience function matching predict_price(features) -> prediction_result interface."""
-    active_service = service or PredictionService()
-    request = PredictionRequest(
-        property_id=property_id,
-        area_sqft=features.area_sqft,
-        bedrooms=features.bedrooms,
-        bathrooms=features.bathrooms,
-        age_years=features.age_years,
-    )
-    return active_service.predict_price(request)

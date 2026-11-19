@@ -6,7 +6,7 @@
     <title>House Price Predictor</title>
     <meta
       name="description"
-      content="Estimate residential property values using area, bedrooms, bathrooms, and property age."
+      content="Estimate Bengaluru home prices using locality, area, bedrooms, and bathrooms."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -20,7 +20,7 @@
     <header class="topbar">
       <div class="container topbar-inner">
         <a href="/" class="brand">House Price Predictor</a>
-        <p class="topbar-context" id="location-summary">Residential Valuation</p>
+        <p class="topbar-context">Bengaluru</p>
       </div>
     </header>
 
@@ -28,13 +28,12 @@
       <section class="intro">
         <h1>House Price Predictor</h1>
         <p class="intro-copy">
-          Select a city, locality, and property record to review its structural attributes, adjust
-          values if needed, and request an estimated price in Indian Rupees.
+          Enter a Bengaluru locality and your home's details to get a price estimate in rupees.
         </p>
       </section>
 
       <div id="global-error" class="alert alert-error hidden" role="alert">
-        <strong class="alert-title">Unable to reach backend service</strong>
+        <strong class="alert-title">Unable to load example properties</strong>
         <p id="global-error-message" class="alert-body"></p>
       </div>
 
@@ -43,20 +42,20 @@
           <form id="prediction-form" novalidate>
             <div class="panel-section">
               <div class="section-header">
-                <h2 id="configuration-heading">Property Selection</h2>
+                <h2 id="configuration-heading">Example Properties (Optional)</h2>
                 <span class="section-meta" id="selector-status">Loading options</span>
               </div>
 
               <div class="selectors-grid">
                 <div class="field">
-                  <label for="city-select">City</label>
+                  <label for="city-select">Example City</label>
                   <select id="city-select" name="city" disabled>
                     <option value="">Loading cities...</option>
                   </select>
                 </div>
 
                 <div class="field">
-                  <label for="locality-select">Locality</label>
+                  <label for="locality-select">Example Locality</label>
                   <select id="locality-select" name="locality" disabled>
                     <option value="">Select a city</option>
                   </select>
@@ -82,7 +81,7 @@
                   class="text-button"
                   disabled
                 >
-                  Reset to Defaults
+                  Restore Example Values
                 </button>
               </div>
 
@@ -93,13 +92,12 @@
                     id="area-input"
                     name="area_sqft"
                     type="number"
-                    min="1"
+                    min="0"
                     max="100000"
-                    step="1"
+                    step="any"
                     inputmode="decimal"
                     placeholder="e.g. 1200"
                     required
-                    disabled
                   />
                   <span class="field-hint">Must be greater than 0</span>
                 </div>
@@ -116,7 +114,6 @@
                     inputmode="numeric"
                     placeholder="e.g. 2"
                     required
-                    disabled
                   />
                   <span class="field-hint">Whole number (1 or more)</span>
                 </div>
@@ -133,26 +130,20 @@
                     inputmode="numeric"
                     placeholder="e.g. 2"
                     required
-                    disabled
                   />
                   <span class="field-hint">Whole number (1 or more)</span>
                 </div>
 
                 <div class="field">
-                  <label for="age-input">Property Age (years)</label>
+                  <label for="location-input">Bengaluru Locality</label>
                   <input
-                    id="age-input"
-                    name="age_years"
-                    type="number"
-                    min="0"
-                    max="200"
-                    step="1"
-                    inputmode="decimal"
-                    placeholder="e.g. 5"
+                    id="location-input"
+                    name="location"
+                    type="text"
+                    maxlength="200"
+                    placeholder="e.g. Whitefield"
                     required
-                    disabled
                   />
-                  <span class="field-hint">0 or greater</span>
                 </div>
               </div>
 
@@ -163,7 +154,7 @@
             </div>
 
             <div class="form-actions">
-              <button type="submit" id="predict-btn" class="primary-button" disabled>
+              <button type="submit" id="predict-btn" class="primary-button">
                 Predict House Price
               </button>
             </div>
@@ -179,8 +170,7 @@
           <div id="result-empty" class="result-state">
             <p class="state-title">No prediction requested yet</p>
             <p class="state-description">
-              Choose a property on the left, adjust any of the four numerical features, and select
-              <strong>Predict House Price</strong>.
+              Fill in the four property fields and select <strong>Predict House Price</strong>.
             </p>
           </div>
 
@@ -210,8 +200,8 @@
 
             <dl class="metadata-list">
               <div class="metadata-row">
-                <dt>Property Identifier</dt>
-                <dd id="result-property-id" class="mono-value">—</dd>
+                <dt>Bengaluru Locality</dt>
+                <dd id="result-location" class="mono-value">-</dd>
               </div>
               <div class="metadata-row">
                 <dt>Model Version</dt>

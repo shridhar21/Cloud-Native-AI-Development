@@ -87,15 +87,5 @@ def get_property(property_id: str, request: Request) -> PropertyDetail:
 
 @router.post("/predict", response_model=PredictionResponse)
 def predict_house_price(payload: PredictionRequest, request: Request) -> PredictionResponse:
-    """Validate property existence and invoke the prediction service."""
-    property_service = _get_property_service(request)
-    prediction_service = _get_prediction_service(request)
-
-    try:
-        property_service.get_property(payload.property_id)
-    except InvalidPropertyIdError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    except ResourceNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-
-    return prediction_service.predict_price(payload)
+    """Run inference using the validated prediction inputs."""
+    return _get_prediction_service(request).predict_price(payload)

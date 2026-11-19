@@ -83,7 +83,7 @@ class PropertySummaryListResponse(BaseModel):
 
 
 class PropertyFeatures(BaseModel):
-    """Four numerical input features for house price prediction."""
+    """Numerical attributes of a sample property record."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -114,32 +114,19 @@ class PropertyDetail(BaseModel):
 class PredictionRequest(BaseModel):
     """Request payload for POST /api/predict."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
-    property_id: str = Field(..., description="Property identifier in format [A-Z][1-10]")
-    area_sqft: float = Field(..., gt=0, le=100000, description="Floor area in square feet (positive)")
+    location: str = Field(..., min_length=1, max_length=200, description="Bengaluru locality")
+    area_sqft: float = Field(..., gt=0, le=100000, allow_inf_nan=False)
     bedrooms: int = Field(..., ge=1, le=50, description="Number of bedrooms (at least 1)")
     bathrooms: int = Field(..., ge=1, le=50, description="Number of bathrooms (at least 1)")
-    age_years: float = Field(..., ge=0, le=200, description="Property age in years (nonnegative)")
-
-    @field_validator("property_id")
-    @classmethod
-    def validate_property_id(cls, value: str) -> str:
-        return validate_property_id_format(value)
-
-    @field_validator("area_sqft", "age_years")
-    @classmethod
-    def check_finite(cls, value: float) -> float:
-        if not math.isfinite(value):
-            raise ValueError("Value must be a finite number.")
-        return value
 
 
 class PredictionResponse(BaseModel):
     """Structured prediction response for configured and unconfigured model states."""
 
     status: PredictionStatus
-    property_id: str
+    location: str
     predicted_price_inr: Optional[float] = None
     currency: str = "INR"
     model_version: Optional[str] = None

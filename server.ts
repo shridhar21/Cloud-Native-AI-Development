@@ -128,19 +128,23 @@ app.get('/api/properties/:propertyId', (req: Request, res: Response) => {
 
 app.post('/api/predict', (req: Request, res: Response) => {
   const body = req.body ?? {};
-  const propertyId = typeof body.property_id === 'string' ? body.property_id.trim() : '';
+  const location = typeof body.location === 'string' ? body.location.trim() : '';
 
-  if (!PROPERTY_ID_REGEX.test(propertyId)) {
+  if (!location || [...location].length > 200) {
     res.status(422).json({
-      detail: 'Invalid property identifier. Expected format [A-Z][1-10], such as A1 through A10.',
+      detail: 'Enter a Bengaluru locality of up to 200 characters.',
     });
+    return;
+  }
+
+  if (Object.keys(body).some((key) => !['location', 'area_sqft', 'bedrooms', 'bathrooms'].includes(key))) {
+    res.status(422).json({ detail: 'Unexpected prediction input field.' });
     return;
   }
 
   const areaSqft = Number(body.area_sqft);
   const bedrooms = Number(body.bedrooms);
   const bathrooms = Number(body.bathrooms);
-  const ageYears = Number(body.age_years);
 
   if (!Number.isFinite(areaSqft) || areaSqft <= 0 || areaSqft > 100000) {
     res.status(422).json({ detail: 'area_sqft must be greater than 0 and at most 100000.' });
@@ -154,20 +158,9 @@ app.post('/api/predict', (req: Request, res: Response) => {
     res.status(422).json({ detail: 'bathrooms must be an integer between 1 and 50.' });
     return;
   }
-  if (!Number.isFinite(ageYears) || ageYears < 0 || ageYears > 200) {
-    res.status(422).json({ detail: 'age_years must be a nonnegative number up to 200.' });
-    return;
-  }
-
-  const exists = dataset.properties.some((p) => p.id === propertyId);
-  if (!exists) {
-    res.status(404).json({ detail: `Property '${propertyId}' not found.` });
-    return;
-  }
-
   res.json({
     status: 'MODEL_NOT_CONFIGURED',
-    property_id: propertyId,
+    location,
     predicted_price_inr: null,
     currency: 'INR',
     model_version: null,

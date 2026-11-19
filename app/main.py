@@ -22,14 +22,12 @@ def create_app(custom_settings: Settings | None = None) -> FastAPI:
         )
 
     property_service = PropertyService(settings.data_file_path)
-    prediction_service = PredictionService(
-        model=None,
-        model_version=settings.model_version,
-    )
-
     @asynccontextmanager
     async def lifespan(fastapi_app: FastAPI):
-        # Future hook: load ML model artifact configured via settings.model_path.
+        fastapi_app.state.prediction_service = PredictionService.from_artifact(
+            path=settings.model_path,
+            version=settings.model_version,
+        )
         yield
 
     application = FastAPI(
@@ -41,7 +39,6 @@ def create_app(custom_settings: Settings | None = None) -> FastAPI:
 
     application.state.settings = settings
     application.state.property_service = property_service
-    application.state.prediction_service = prediction_service
 
     application.include_router(api_router)
     application.mount(

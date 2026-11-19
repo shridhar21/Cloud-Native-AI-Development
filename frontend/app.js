@@ -4,11 +4,10 @@
     localitySelect: document.getElementById("locality-select"),
     propertySelect: document.getElementById("property-select"),
     selectorStatus: document.getElementById("selector-status"),
-    locationSummary: document.getElementById("location-summary"),
     areaInput: document.getElementById("area-input"),
     bedroomsInput: document.getElementById("bedrooms-input"),
     bathroomsInput: document.getElementById("bathrooms-input"),
-    ageInput: document.getElementById("age-input"),
+    locationInput: document.getElementById("location-input"),
     resetFeaturesBtn: document.getElementById("reset-features-btn"),
     predictBtn: document.getElementById("predict-btn"),
     predictionForm: document.getElementById("prediction-form"),
@@ -25,13 +24,12 @@
     modelNotice: document.getElementById("model-notice"),
     modelNoticeMessage: document.getElementById("model-notice-message"),
     predictedPriceValue: document.getElementById("predicted-price-value"),
-    resultPropertyId: document.getElementById("result-property-id"),
+    resultLocation: document.getElementById("result-location"),
     resultModelVersion: document.getElementById("result-model-version"),
     resultTimestamp: document.getElementById("result-timestamp"),
   };
 
   let currentProperty = null;
-  let isPredicting = false;
 
   const inrFormatter = new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -91,17 +89,13 @@
       elements.areaInput,
       elements.bedroomsInput,
       elements.bathroomsInput,
-      elements.ageInput,
+      elements.locationInput,
     ].forEach((input) => input.removeAttribute("aria-invalid"));
   }
 
-  function setFeatureInputsDisabled(disabled) {
-    elements.areaInput.disabled = disabled;
-    elements.bedroomsInput.disabled = disabled;
-    elements.bathroomsInput.disabled = disabled;
-    elements.ageInput.disabled = disabled;
-    elements.resetFeaturesBtn.disabled = disabled;
-    elements.predictBtn.disabled = disabled || isPredicting;
+  function clearExample() {
+    currentProperty = null;
+    elements.resetFeaturesBtn.disabled = true;
   }
 
   function setResultView(viewName, contextText) {
@@ -149,11 +143,8 @@
     elements.areaInput.value = String(property.features.area_sqft);
     elements.bedroomsInput.value = String(property.features.bedrooms);
     elements.bathroomsInput.value = String(property.features.bathrooms);
-    elements.ageInput.value = String(property.features.age_years);
-    elements.locationSummary.textContent = `${property.city_name} · ${property.locality_name}`;
     clearValidationError();
-    setFeatureInputsDisabled(false);
-    setResultView("empty", `Selected ${property.id}`);
+    elements.resetFeaturesBtn.disabled = false;
   }
 
   function formatTimestamp(isoTimestamp) {
@@ -177,15 +168,10 @@
   }
 
   function validateFeatureInputs() {
-    const propertyId = elements.propertySelect.value.trim();
-    if (!propertyId) {
-      return { valid: false, message: "Please select a property first.", field: null };
-    }
-
     const areaRaw = elements.areaInput.value.trim();
     const bedroomsRaw = elements.bedroomsInput.value.trim();
     const bathroomsRaw = elements.bathroomsInput.value.trim();
-    const ageRaw = elements.ageInput.value.trim();
+    const location = elements.locationInput.value.trim();
 
     if (!areaRaw) {
       return { valid: false, message: "Area in square feet is required.", field: elements.areaInput };
@@ -194,7 +180,7 @@
     if (!Number.isFinite(areaSqft) || areaSqft <= 0 || areaSqft > 100000) {
       return {
         valid: false,
-        message: "Area must be a positive number between 1 and 100,000 sq ft.",
+        message: "Area must be greater than 0 and at most 100,000 sq ft.",
         field: elements.areaInput,
       };
     }
@@ -231,36 +217,27 @@
       };
     }
 
-    if (!ageRaw) {
+    if (!location || [...location].length > 200) {
       return {
         valid: false,
-        message: "Property age is required.",
-        field: elements.ageInput,
-      };
-    }
-    const ageYears = Number(ageRaw);
-    if (!Number.isFinite(ageYears) || ageYears < 0 || ageYears > 200) {
-      return {
-        valid: false,
-        message: "Property age must be a nonnegative number (0 to 200 years).",
-        field: elements.ageInput,
+        message: "Enter a Bengaluru locality of up to 200 characters.",
+        field: elements.locationInput,
       };
     }
 
     return {
       valid: true,
       payload: {
-        property_id: propertyId,
+        location,
         area_sqft: areaSqft,
         bedrooms,
         bathrooms,
-        age_years: ageYears,
       },
     };
   }
 
   function renderPredictionResponse(data) {
-    elements.resultPropertyId.textContent = data.property_id || "—";
+    elements.resultLocation.textContent = data.location || "-";
     elements.resultModelVersion.textContent = data.model_version || "Not configured";
     elements.resultTimestamp.textContent = formatTimestamp(data.timestamp);
 
@@ -282,54 +259,51 @@
   }
 
   async function loadPropertyDetail(propertyId) {
+    clearExample();
     if (!propertyId) {
-      currentProperty = null;
-      setFeatureInputsDisabled(true);
+      elements.selectorStatus.textContent = "Choose an example";
       return;
     }
 
     elements.selectorStatus.textContent = `Loading ${propertyId}`;
-    setFeatureInputsDisabled(true);
 
     try {
       const property = await fetchJson(`/api/properties/${encodeURIComponent(propertyId)}`);
+      if (elements.propertySelect.disabled || elements.propertySelect.value !== propertyId) return;
       hideGlobalError();
       applyPropertyFeatures(property);
       elements.selectorStatus.textContent = "Ready";
     } catch (error) {
+      if (elements.propertySelect.disabled || elements.propertySelect.value !== propertyId) return;
       elements.selectorStatus.textContent = "Error";
       showGlobalError(error.message);
     }
   }
 
   async function loadProperties(localityId) {
+    clearExample();
     if (!localityId) {
       populateSelect(elements.propertySelect, [], (p) => p.id, (p) => p.label, "No properties");
-      setFeatureInputsDisabled(true);
       return;
     }
 
     elements.selectorStatus.textContent = "Loading properties";
     elements.propertySelect.disabled = true;
-    setFeatureInputsDisabled(true);
 
     try {
       const data = await fetchJson(
         `/api/localities/${encodeURIComponent(localityId)}/properties`
       );
+      const properties = data.properties;
       populateSelect(
         elements.propertySelect,
-        data.properties,
+        properties.length ? [{ id: "", label: "Choose an example" }, ...properties] : [],
         (item) => item.id,
         (item) => item.label,
         "No properties available"
       );
 
-      if (data.properties.length > 0) {
-        await loadPropertyDetail(elements.propertySelect.value);
-      } else {
-        elements.selectorStatus.textContent = "No properties";
-      }
+      elements.selectorStatus.textContent = properties.length ? "Choose an example" : "No properties";
     } catch (error) {
       elements.selectorStatus.textContent = "Error";
       showGlobalError(error.message);
@@ -337,16 +311,16 @@
   }
 
   async function loadLocalities(cityId) {
+    clearExample();
     if (!cityId) {
       populateSelect(elements.localitySelect, [], (l) => l.id, (l) => l.name, "No localities");
-      setFeatureInputsDisabled(true);
+      await loadProperties("");
       return;
     }
 
     elements.selectorStatus.textContent = "Loading localities";
     elements.localitySelect.disabled = true;
     elements.propertySelect.disabled = true;
-    setFeatureInputsDisabled(true);
 
     try {
       const data = await fetchJson(`/api/cities/${encodeURIComponent(cityId)}/localities`);
@@ -371,7 +345,6 @@
 
   async function loadCities() {
     elements.selectorStatus.textContent = "Loading cities";
-    setFeatureInputsDisabled(true);
 
     try {
       const data = await fetchJson("/api/cities");
@@ -397,6 +370,7 @@
 
   async function handlePredictSubmit(event) {
     event.preventDefault();
+    if (elements.predictBtn.disabled) return;
     clearValidationError();
 
     const validation = validateFeatureInputs();
@@ -405,7 +379,6 @@
       return;
     }
 
-    isPredicting = true;
     elements.predictBtn.disabled = true;
     elements.predictBtn.textContent = "Predicting...";
     setResultView("loading", "Request in progress");
@@ -415,15 +388,13 @@
         method: "POST",
         body: JSON.stringify(validation.payload),
       });
-      hideGlobalError();
       renderPredictionResponse(result);
     } catch (error) {
       elements.resultErrorMessage.textContent = error.message;
       setResultView("error", "Error");
     } finally {
-      isPredicting = false;
       elements.predictBtn.textContent = "Predict House Price";
-      elements.predictBtn.disabled = !currentProperty;
+      elements.predictBtn.disabled = false;
     }
   }
 
@@ -450,7 +421,7 @@
       elements.areaInput,
       elements.bedroomsInput,
       elements.bathroomsInput,
-      elements.ageInput,
+      elements.locationInput,
     ].forEach((input) => {
       input.addEventListener("input", clearValidationError);
     });

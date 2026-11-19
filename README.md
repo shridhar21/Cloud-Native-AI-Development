@@ -1,18 +1,17 @@
 # House Price Predictor (Version 1)
 
-A simple, modular-monolith web application for estimating residential house prices in Indian Rupees (INR). Built with a **FastAPI** backend, **Vanilla HTML/CSS/JavaScript** frontend, synthetic JSON demonstration data, and a clean prediction-service boundary prepared for future **scikit-learn Multiple Linear Regression** integration.
+A FastAPI and vanilla JavaScript application that uses a scikit-learn regression pipeline to estimate Bengaluru house prices in rupees.
 
 ## Scope (Version 1)
 
-- **City**: `City A` (`city-a`)
-- **Locality**: `Local 1` (`local-1`)
-- **Properties**: `A1` through `A10` (identifiers validated against `[A-Z][1-10]`)
+- **Prediction area** — Bengaluru.
+- **Optional examples** — The synthetic `City A` / `Local 1` records `A1` through `A10` can fill in the form's numeric fields.
 - **Features**:
   - `area_sqft` (positive float)
   - `bedrooms` (integer >= 1)
   - `bathrooms` (integer >= 1)
-  - `age_years` (nonnegative float)
-- **ML Model Status**: No model is trained or bundled in Version 1. Prediction requests return an explicit `MODEL_NOT_CONFIGURED` response rather than fabricating values.
+  - `location` (Bengaluru locality)
+- **Model artifact** — Configure a fitted `model.joblib` through `MODEL_PATH`. The API returns `MODEL_NOT_CONFIGURED` when the path is unset.
 
 ---
 
@@ -31,7 +30,7 @@ house-price-predictor/
 │   ├── services/
 │   │   ├── __init__.py
 │   │   ├── property_service.py     # JSON data-access layer
-│   │   └── prediction_service.py   # Prediction interface (MODEL_NOT_CONFIGURED)
+│   │   └── prediction_service.py   # Model loading and inference
 │   └── data/
 │       └── properties.json         # Synthetic property records A1-A10
 ├── frontend/
@@ -54,7 +53,7 @@ house-price-predictor/
 1. **Frontend Presentation (`frontend/`)**
    - Pure HTML, CSS, and Vanilla JavaScript using the browser `fetch` API.
    - Populates City, Locality, and Property dropdowns directly from backend endpoints.
-   - Loads the selected property's four numerical attributes into editable inputs, validates user edits, and renders loading, error, `MODEL_NOT_CONFIGURED`, and INR price result states.
+   - Optionally copies the selected example's area, bedroom count, and bathroom count into the form. Users can enter all four prediction inputs directly.
 
 2. **API Routing (`app/api/routes.py`)**
    - Thin FastAPI handlers prefixed with `/api`.
@@ -65,9 +64,8 @@ house-price-predictor/
    - Raises explicit domain errors (`InvalidPropertyIdError`, `ResourceNotFoundError`, `PropertyDataError`) mapped to clean HTTP status codes (`400`, `404`, or startup failure).
 
 4. **Prediction Service (`app/services/prediction_service.py`)**
-   - Exposes `PredictionService.predict_price(request)` and `predict_price(features, property_id)`.
-   - Returns `status: "MODEL_NOT_CONFIGURED"` when no model artifact is loaded.
-   - Designed so a future `joblib`-loaded scikit-learn `LinearRegression` model can be injected at startup without modifying route handlers or frontend code.
+   - Loads the configured pipeline once at FastAPI startup and retains it in memory.
+   - Maps the request to the model columns `location`, `total_sqft`, `bhk`, and `bath`. The model's output is in lakhs and the service converts it to rupees.
 
 5. **Configuration (`app/config.py`)**
    - Reads `APP_ENV`, `APP_HOST`, `APP_PORT`, `DATA_FILE_PATH`, `FRONTEND_DIR`, `MODEL_PATH`, and `MODEL_VERSION` from environment variables so Development, Staging, and Production EC2 instances stay cleanly separated.
@@ -77,29 +75,26 @@ house-price-predictor/
 ## Request–Response Flow
 
 1. User opens `/` -> FastAPI serves `frontend/index.html` and static assets under `/static/*`.
-2. Frontend calls `GET /api/cities` -> `GET /api/cities/city-a/localities` -> `GET /api/localities/local-1/properties` -> `GET /api/properties/A1`.
-3. Numerical fields populate with `A1` features (`area_sqft`, `bedrooms`, `bathrooms`, `age_years`).
-4. User adjusts any feature values and clicks **Predict House Price**.
-5. Frontend validates inputs and sends `POST /api/predict`:
+2. The user enters a Bengaluru locality, area, bedrooms, and bathrooms. Choosing an example is optional.
+3. The frontend sends `POST /api/predict` with the four inputs.
    ```json
    {
-     "property_id": "A1",
+     "location": "Whitefield",
      "area_sqft": 850,
      "bedrooms": 2,
-     "bathrooms": 1,
-     "age_years": 12
+     "bathrooms": 1
    }
    ```
-6. Backend validates the payload via `PredictionRequest`, confirms property existence, invokes `prediction_service.predict_price()`, and returns:
+4. FastAPI validates the inputs and calls `prediction_service.predict_price()`. An example response for a configured model follows.
    ```json
    {
-     "status": "MODEL_NOT_CONFIGURED",
-     "property_id": "A1",
-     "predicted_price_inr": null,
+     "status": "SUCCESS",
+     "location": "Whitefield",
+     "predicted_price_inr": 7500000,
      "currency": "INR",
-     "model_version": null,
+     "model_version": "v1",
      "timestamp": "2026-11-17T01:20:00Z",
-     "message": "Prediction model is not configured yet. Train and configure the Multiple Linear Regression model to generate price estimates."
+     "message": "House price prediction generated successfully."
    }
    ```
 
@@ -138,9 +133,15 @@ pip install -r requirements.txt
 
 ### 3. Run the Application with Uvicorn
 
+Use the same scikit-learn version recorded in the model's `metadata.json`. Set the path to a trusted local artifact before starting FastAPI. On Development EC2, the training script writes the v1 artifact under `$HOME/artifacts/house-price/v1`.
+
 ```bash
+export MODEL_PATH="$HOME/artifacts/house-price/v1/model.joblib"
+export MODEL_VERSION=v1
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
+
+When `MODEL_PATH` is set, an unreadable or incompatible artifact causes startup to fail. Check `/api/health` for `model_configured` and `model_version` once the app is running.
 
 Open `http://<server-ip>:8000` in your browser.
 
@@ -167,8 +168,8 @@ pytest -v
 | `APP_PORT` | `8000` | Uvicorn bind port |
 | `DATA_FILE_PATH` | `app/data/properties.json` | Path to synthetic properties JSON file |
 | `FRONTEND_DIR` | `frontend` | Path to static frontend directory |
-| `MODEL_PATH` | *(unset)* | Future path to downloaded regression model artifact |
-| `MODEL_VERSION` | *(unset)* | Future model version identifier |
+| `MODEL_PATH` | *(unset)* | Local path to the fitted `model.joblib` artifact |
+| `MODEL_VERSION` | *(unset)* | Version reported by the health and prediction endpoints |
 
 ---
 
@@ -183,6 +184,8 @@ After=network.target
 User=ubuntu
 WorkingDirectory=/opt/house-price-predictor
 Environment="APP_ENV=production"
+Environment="MODEL_PATH=/opt/house-price-predictor/models/v1/model.joblib"
+Environment="MODEL_VERSION=v1"
 ExecStart=/opt/house-price-predictor/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
 Restart=always
 RestartSec=5
@@ -195,4 +198,4 @@ WantedBy=multi-user.target
 
 ## Preview Runtime Note
 
-In Node-only sandboxed preview environments where Python `pip`/`fastapi` are not preinstalled, `server.ts` acts as a lightweight preview host serving the exact same `frontend/` assets and `/api/*` JSON contracts backed by `app/data/properties.json`. All production/EC2 deployments run the FastAPI application (`app/main.py`) via Uvicorn.
+The Node preview serves the same frontend and sample-property endpoints. Its prediction endpoint returns `MODEL_NOT_CONFIGURED`. Run FastAPI with `MODEL_PATH` configured to serve actual estimates.

@@ -5,7 +5,6 @@ A FastAPI and vanilla JavaScript application that uses a scikit-learn regression
 ## Scope (Version 1)
 
 - **Prediction area** — Bengaluru.
-- **Optional examples** — The synthetic `City A` / `Local 1` records `A1` through `A10` can fill in the form's numeric fields.
 - **Features**:
   - `area_sqft` (positive float)
   - `bedrooms` (integer >= 1)
@@ -52,8 +51,7 @@ house-price-predictor/
 
 1. **Frontend Presentation (`frontend/`)**
    - Pure HTML, CSS, and Vanilla JavaScript using the browser `fetch` API.
-   - Populates City, Locality, and Property dropdowns directly from backend endpoints.
-   - Optionally copies the selected example's area, bedroom count, and bathroom count into the form. Users can enter all four prediction inputs directly.
+   - Accepts the four prediction inputs directly and displays the estimate in rupees.
 
 2. **API Routing (`app/api/routes.py`)**
    - Thin FastAPI handlers prefixed with `/api`.
@@ -75,7 +73,7 @@ house-price-predictor/
 ## Request–Response Flow
 
 1. User opens `/` -> FastAPI serves `frontend/index.html` and static assets under `/static/*`.
-2. The user enters a Bengaluru locality, area, bedrooms, and bathrooms. Choosing an example is optional.
+2. The user enters a Bengaluru locality, area, bedrooms, and bathrooms.
 3. The frontend sends `POST /api/predict` with the four inputs.
    ```json
    {

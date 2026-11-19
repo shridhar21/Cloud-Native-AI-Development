@@ -1,18 +1,11 @@
 (() => {
   const elements = {
-    citySelect: document.getElementById("city-select"),
-    localitySelect: document.getElementById("locality-select"),
-    propertySelect: document.getElementById("property-select"),
-    selectorStatus: document.getElementById("selector-status"),
     areaInput: document.getElementById("area-input"),
     bedroomsInput: document.getElementById("bedrooms-input"),
     bathroomsInput: document.getElementById("bathrooms-input"),
     locationInput: document.getElementById("location-input"),
-    resetFeaturesBtn: document.getElementById("reset-features-btn"),
     predictBtn: document.getElementById("predict-btn"),
     predictionForm: document.getElementById("prediction-form"),
-    globalError: document.getElementById("global-error"),
-    globalErrorMessage: document.getElementById("global-error-message"),
     validationError: document.getElementById("validation-error"),
     validationErrorMessage: document.getElementById("validation-error-message"),
     resultContext: document.getElementById("result-context"),
@@ -28,8 +21,6 @@
     resultModelVersion: document.getElementById("result-model-version"),
     resultTimestamp: document.getElementById("result-timestamp"),
   };
-
-  let currentProperty = null;
 
   const inrFormatter = new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -63,16 +54,6 @@
     return payload;
   }
 
-  function showGlobalError(message) {
-    elements.globalErrorMessage.textContent = message;
-    elements.globalError.classList.remove("hidden");
-  }
-
-  function hideGlobalError() {
-    elements.globalError.classList.add("hidden");
-    elements.globalErrorMessage.textContent = "";
-  }
-
   function showValidationError(message, invalidField = null) {
     clearValidationError();
     elements.validationErrorMessage.textContent = message;
@@ -93,11 +74,6 @@
     ].forEach((input) => input.removeAttribute("aria-invalid"));
   }
 
-  function clearExample() {
-    currentProperty = null;
-    elements.resetFeaturesBtn.disabled = true;
-  }
-
   function setResultView(viewName, contextText) {
     elements.resultEmpty.classList.add("hidden");
     elements.resultLoading.classList.add("hidden");
@@ -115,36 +91,6 @@
     }
 
     elements.resultContext.textContent = contextText;
-  }
-
-  function populateSelect(selectEl, items, getValue, getLabel, emptyLabel) {
-    selectEl.innerHTML = "";
-
-    if (!items || items.length === 0) {
-      const option = document.createElement("option");
-      option.value = "";
-      option.textContent = emptyLabel;
-      selectEl.appendChild(option);
-      selectEl.disabled = true;
-      return;
-    }
-
-    items.forEach((item) => {
-      const option = document.createElement("option");
-      option.value = getValue(item);
-      option.textContent = getLabel(item);
-      selectEl.appendChild(option);
-    });
-    selectEl.disabled = false;
-  }
-
-  function applyPropertyFeatures(property) {
-    currentProperty = property;
-    elements.areaInput.value = String(property.features.area_sqft);
-    elements.bedroomsInput.value = String(property.features.bedrooms);
-    elements.bathroomsInput.value = String(property.features.bathrooms);
-    clearValidationError();
-    elements.resetFeaturesBtn.disabled = false;
   }
 
   function formatTimestamp(isoTimestamp) {
@@ -258,116 +204,6 @@
     setResultView("populated", "Estimate ready");
   }
 
-  async function loadPropertyDetail(propertyId) {
-    clearExample();
-    if (!propertyId) {
-      elements.selectorStatus.textContent = "Choose an example";
-      return;
-    }
-
-    elements.selectorStatus.textContent = `Loading ${propertyId}`;
-
-    try {
-      const property = await fetchJson(`/api/properties/${encodeURIComponent(propertyId)}`);
-      if (elements.propertySelect.disabled || elements.propertySelect.value !== propertyId) return;
-      hideGlobalError();
-      applyPropertyFeatures(property);
-      elements.selectorStatus.textContent = "Ready";
-    } catch (error) {
-      if (elements.propertySelect.disabled || elements.propertySelect.value !== propertyId) return;
-      elements.selectorStatus.textContent = "Error";
-      showGlobalError(error.message);
-    }
-  }
-
-  async function loadProperties(localityId) {
-    clearExample();
-    if (!localityId) {
-      populateSelect(elements.propertySelect, [], (p) => p.id, (p) => p.label, "No properties");
-      return;
-    }
-
-    elements.selectorStatus.textContent = "Loading properties";
-    elements.propertySelect.disabled = true;
-
-    try {
-      const data = await fetchJson(
-        `/api/localities/${encodeURIComponent(localityId)}/properties`
-      );
-      const properties = data.properties;
-      populateSelect(
-        elements.propertySelect,
-        properties.length ? [{ id: "", label: "Choose an example" }, ...properties] : [],
-        (item) => item.id,
-        (item) => item.label,
-        "No properties available"
-      );
-
-      elements.selectorStatus.textContent = properties.length ? "Choose an example" : "No properties";
-    } catch (error) {
-      elements.selectorStatus.textContent = "Error";
-      showGlobalError(error.message);
-    }
-  }
-
-  async function loadLocalities(cityId) {
-    clearExample();
-    if (!cityId) {
-      populateSelect(elements.localitySelect, [], (l) => l.id, (l) => l.name, "No localities");
-      await loadProperties("");
-      return;
-    }
-
-    elements.selectorStatus.textContent = "Loading localities";
-    elements.localitySelect.disabled = true;
-    elements.propertySelect.disabled = true;
-
-    try {
-      const data = await fetchJson(`/api/cities/${encodeURIComponent(cityId)}/localities`);
-      populateSelect(
-        elements.localitySelect,
-        data.localities,
-        (item) => item.id,
-        (item) => item.name,
-        "No localities available"
-      );
-
-      if (data.localities.length > 0) {
-        await loadProperties(elements.localitySelect.value);
-      } else {
-        elements.selectorStatus.textContent = "No localities";
-      }
-    } catch (error) {
-      elements.selectorStatus.textContent = "Error";
-      showGlobalError(error.message);
-    }
-  }
-
-  async function loadCities() {
-    elements.selectorStatus.textContent = "Loading cities";
-
-    try {
-      const data = await fetchJson("/api/cities");
-      hideGlobalError();
-      populateSelect(
-        elements.citySelect,
-        data.cities,
-        (item) => item.id,
-        (item) => item.name,
-        "No cities available"
-      );
-
-      if (data.cities.length > 0) {
-        await loadLocalities(elements.citySelect.value);
-      } else {
-        elements.selectorStatus.textContent = "No cities";
-      }
-    } catch (error) {
-      elements.selectorStatus.textContent = "Error";
-      showGlobalError(error.message);
-    }
-  }
-
   async function handlePredictSubmit(event) {
     event.preventDefault();
     if (elements.predictBtn.disabled) return;
@@ -399,24 +235,6 @@
   }
 
   function bindEvents() {
-    elements.citySelect.addEventListener("change", () => {
-      loadLocalities(elements.citySelect.value);
-    });
-
-    elements.localitySelect.addEventListener("change", () => {
-      loadProperties(elements.localitySelect.value);
-    });
-
-    elements.propertySelect.addEventListener("change", () => {
-      loadPropertyDetail(elements.propertySelect.value);
-    });
-
-    elements.resetFeaturesBtn.addEventListener("click", () => {
-      if (currentProperty) {
-        applyPropertyFeatures(currentProperty);
-      }
-    });
-
     [
       elements.areaInput,
       elements.bedroomsInput,
@@ -430,5 +248,4 @@
   }
 
   bindEvents();
-  loadCities();
 })();

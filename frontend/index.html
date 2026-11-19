@@ -32,57 +32,12 @@
         </p>
       </section>
 
-      <div id="global-error" class="alert alert-error hidden" role="alert">
-        <strong class="alert-title">Unable to load example properties</strong>
-        <p id="global-error-message" class="alert-body"></p>
-      </div>
-
       <div class="predictor-grid">
         <section class="panel" aria-labelledby="configuration-heading">
           <form id="prediction-form" novalidate>
             <div class="panel-section">
               <div class="section-header">
-                <h2 id="configuration-heading">Example Properties (Optional)</h2>
-                <span class="section-meta" id="selector-status">Loading options</span>
-              </div>
-
-              <div class="selectors-grid">
-                <div class="field">
-                  <label for="city-select">Example City</label>
-                  <select id="city-select" name="city" disabled>
-                    <option value="">Loading cities...</option>
-                  </select>
-                </div>
-
-                <div class="field">
-                  <label for="locality-select">Example Locality</label>
-                  <select id="locality-select" name="locality" disabled>
-                    <option value="">Select a city</option>
-                  </select>
-                </div>
-
-                <div class="field">
-                  <label for="property-select">Property</label>
-                  <select id="property-select" name="property" disabled>
-                    <option value="">Select a locality</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <hr class="divider" />
-
-            <div class="panel-section">
-              <div class="section-header">
-                <h2>Property Features</h2>
-                <button
-                  type="button"
-                  id="reset-features-btn"
-                  class="text-button"
-                  disabled
-                >
-                  Restore Example Values
-                </button>
+                <h2 id="configuration-heading">Property Features</h2>
               </div>
 
               <div class="features-grid">
